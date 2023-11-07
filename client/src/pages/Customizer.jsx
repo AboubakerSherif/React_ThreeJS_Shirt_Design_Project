@@ -6,7 +6,7 @@ import config from '../config/config';
 import state from '../store';
 import { download } from '../assets';
 import { downloadCanvasToImage, reader } from '../config/helpers';
-import { EditorsTabs, FilterTabs, DecalTypes } from '../config/constants';
+import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
 import { fadeAnimation, slideAnimation } from '../config/motion';
 import { AiPicker, FilePicker, ColorPicker, CustomButton, Tab } from '../components';
 
@@ -15,7 +15,7 @@ const Customizer = () => {
 
   const [file, setFile] = useState(" ");
   const [prompt, setPrompt] = useState("");
-  const [generateImg, setGenerateImg] = useState(false);
+  const [generatingImg, setgeneratingImg] = useState(false);
   
   const [activeEditorTab, setActiveEditorTab] = useState(" ");
   const [activeFilterTab, setActiveFilterTab] = useState({
@@ -27,21 +27,56 @@ const Customizer = () => {
   //show tab content depending on the active tab
   const generateTabContent = () => {
     switch(activeEditorTab) {
-      case "colorPicker":
+      case "colorpicker":
         return <ColorPicker/>;
-      case "filePicker":
+      case "filepicker":
         return <FilePicker
         file={file}
         setFile={setFile}
         readFile={readFile}
         />;
-      case "aiPicker":
-        return <AiPicker/>;
+      case "aipicker":
+        return <AiPicker
+        prompt={prompt}
+        setPrompt={setPrompt}
+        setgeneratingImg={setgeneratingImg}
+        handleSubmit={handleSubmit}
+        />;
       
       
        default:
         return null;
   }
+  }
+
+  //handle the submit button
+  const handleSubmit = async (type) => {
+    if (!prompt) return alert("Please enter a prompt");
+    
+    try{
+      setgeneratingImg
+(true);
+
+      const response = await fetch("http://localhost:8080/api/v1/dalle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+        })
+      })
+
+      const data = await response.json();
+
+      handleDecals = (type, 'data:image/png;base64, ${data.image}');
+
+    } catch (error) {
+      alert(error);
+    }finally{
+    setgeneratingImg(false); 
+    setActiveEditorTab(" ");
+    }
   }
 
   //handle the decals
@@ -57,21 +92,29 @@ const Customizer = () => {
   const handleActiveFilterTab = (tabName) => {
     switch(tabName) {
       case "logoShirt":
-        state.isLogoShirt= !activeFilterTab[tabName];
+        state.isLogoTexture = !activeFilterTab[tabName];
         break;
       case "stylishShirt":
-        state.isFullTexture= !activeFilterTab[tabName];
+        state.isFullTexture = !activeFilterTab[tabName];
         break;
       default:
         state.isLogoShirt= true;
         state.isFullTexture= false;
+        break;
     }
+
+    setActiveFilterTab((prevState) =>{
+      return {
+        ...prevState,
+        [tabName]: !prevState[tabName]
+      }
+    })
   }
 
   const readFile = (type) => {
     reader(file).then((result) => {
       handleDecals(type, result);
-      setActiveEditorTab(" ");
+      setActiveEditorTab("");
     }) 
   }
 
@@ -86,7 +129,7 @@ const Customizer = () => {
           >
            <div className="flex items-center min-h-screen">
             <div className="editortabs-container tabs">
-              {EditorsTabs.map((tab) => (
+              {EditorTabs.map((tab) => (
                 <Tab
                   key={tab.name}
                   tab={tab}
@@ -124,8 +167,8 @@ const Customizer = () => {
                   key={tab.name}
                   tab={tab}
                   isFiltertab
-                  isActiveTab =""
-                  handleClick={ () => {} }
+                  isActiveTab = {activeFilterTab[tab.name]}
+                  handleClick={ () => handleActiveFilterTab(tab.name) }
                 />
               ))}
 
